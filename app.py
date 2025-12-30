@@ -12,7 +12,7 @@ os.makedirs("tmp", exist_ok=True)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-tasks = {}  #{"ready": False, "output": path}
+tasks = {}
 
 @app.get("/", response_class=HTMLResponse)
 def index():
@@ -20,28 +20,21 @@ def index():
         return f.read()
 
 def process_video(uid, input_path, output_path):
-    anonymize_video(input_path, output_path)
+    anonymize_video(uid, tasks)
     tasks[uid]["ready"] = True
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
     uid = str(uuid.uuid4())
-
     input_path = f"tmp/{uid}_input.mp4"
     output_path = f"tmp/{uid}_output.mp4"
 
     with open(input_path, "wb") as f:
         f.write(await file.read())
 
-    tasks[uid] = {
-        "ready": False,
-        "output": output_path
-    }
+    tasks[uid] = {"ready": False, "output": output_path, "progress": 0}
 
-    thread = threading.Thread(
-        target=process_video,
-        args=(uid, input_path, output_path)
-    )
+    thread = threading.Thread(target=process_video, args=(uid, input_path, output_path))
     thread.start()
 
     return JSONResponse({"uid": uid})
@@ -50,17 +43,12 @@ async def upload(file: UploadFile = File(...)):
 def status(uid: str):
     task = tasks.get(uid)
     if not task:
-        return {"ready": False}
-    return {"ready": task["ready"]}
+        return {"ready": False, "progress": 0}
+    return {"ready": task["ready"], "progress": task.get("progress", 0)}
 
 @app.get("/download/{uid}")
 def download(uid: str):
     task = tasks.get(uid)
     if not task or not task["ready"]:
         return JSONResponse({"error": "Not ready"}, status_code=400)
-
-    return FileResponse(
-        task["output"],
-        filename="anonymized.mp4",
-        media_type="video/mp4"
-    )
+    return FileResponse(task["output"], filename="anonymized.mp4", media_type="video/mp4")

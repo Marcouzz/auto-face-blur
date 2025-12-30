@@ -100,6 +100,9 @@ button:disabled {
   <button onclick="send()">Upload</button>
 
   <div class="status" id="status"></div>
+  <div class="progress-bar" style="width: 100%; background: #333; border-radius: 10px; height: 12px; margin-top: 10px; display: none">
+    <div id="progress" style="width: 0%; height: 100%; background: var(--accent); border-radius: 10px;"></div>
+  </div>
 
   <button id="downloadBtn" onclick="downloadVideo()">Download Video</button>
 
@@ -134,11 +137,15 @@ function checkStatus() {
   fetch(`/status/${currentUID}`)
     .then(res => res.json())
     .then(data => {
+      document.getElementById("progress").style.width = data.progress + "%"
+      document.getElementById("progress").style.display = "block"
+      document.getElementById("status").innerText = `Progress: ${data.progress}%`
       if (data.ready) {
         document.getElementById("status").innerText = "Processing complete"
         document.getElementById("downloadBtn").style.display = "block"
+        document.getElementById("progress").style.width = "100%"
       } else {
-        setTimeout(checkStatus, 3000)
+        setTimeout(checkStatus, 5000)
       }
     })
 }
