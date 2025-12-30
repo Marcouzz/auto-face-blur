@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Secure Video Upload</title>
+<style>
+:root {
+  --bg: #0f1115;
+  --text: #eaeaf0;
+  --muted: #9aa0aa;
+  --accent: #4f8cff;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f4f6fb;
+    --text: #111;
+    --muted: #666;
+    --accent: #2563eb;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.container {
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+}
+
+h2 {
+  margin: 0 0 16px;
+  font-size: 1.3rem;
+  text-align: center;
+}
+
+input[type="file"] {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  color: var(--text);
+  border: 1px dashed var(--muted);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+button {
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.status {
+  margin-top: 14px;
+  text-align: center;
+  color: var(--muted);
+  font-size: .95rem;
+}
+
+#downloadBtn {
+  display: none;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Auto Face Blur</h2>
+
+  <input type="file" id="video" accept="video/*">
+
+  <button onclick="send()">Upload</button>
+
+  <div class="status" id="status"></div>
+
+  <button id="downloadBtn" onclick="downloadVideo()">Download Video</button>
+
+  <p>This tool automatically blurs faces and removes all metadata from the uploaded video.</p>
+</div>
+
+<script>
+let currentUID = null
+
+async function send() {
+  const file = document.getElementById("video").files[0]
+  if (!file) return
+
+  document.getElementById("status").innerText = "Uploading..."
+
+  const form = new FormData()
+  form.append("file", file)
+
+  const res = await fetch("/upload", {
+    method: "POST",
+    body: form
+  })
+
+  const data = await res.json()
+  currentUID = data.uid
+
+  document.getElementById("status").innerText = "Processing..."
+  checkStatus()
+}
+
+function checkStatus() {
+  fetch(`/status/${currentUID}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.ready) {
+        document.getElementById("status").innerText = "Processing complete"
+        document.getElementById("downloadBtn").style.display = "block"
+      } else {
+        setTimeout(checkStatus, 3000)
+      }
+    })
+}
+
+function downloadVideo() {
+  window.location.href = `/download/${currentUID}`
+}
+</script>
+
+</body>
+</html>
